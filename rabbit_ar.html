@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AR: 송편을 든 토끼</title>
+
+  <!-- model-viewer (Google) -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    :root {{ color-scheme: light dark; }}
+    body {{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans KR', sans-serif; }}
+    header {{ position: fixed; top: 0; left: 0; right: 0; display: flex; gap: .5rem; align-items: center; padding: .6rem .8rem; background: rgba(255,255,255,.7); backdrop-filter: blur(6px); z-index: 5; }}
+    header button, header a {{ font-size: .95rem; padding: .45rem .7rem; border-radius: .6rem; border: 1px solid #ddd; background: #fff; cursor: pointer; text-decoration: none; color: inherit; }}
+    header .spacer {{ flex: 1; }}
+    model-viewer {{ width: 100vw; height: 100vh; }}
+    .qr-panel {{ position: fixed; right: .8rem; bottom: .8rem; background: rgba(255,255,255,.85); border: 1px solid #ddd; border-radius: .8rem; padding: .6rem; display: grid; grid-template-columns: 120px auto; gap: .6rem; align-items: center; box-shadow: 0 8px 30px rgba(0,0,0,.12); }}
+    .qr-panel img {{ width: 120px; height: 120px; }}
+    .qr-panel small {{ display:block; opacity:.75 }}
+    .toast {{ position: fixed; left: 50%; transform: translateX(-50%); bottom: 1rem; background: #111; color:#fff; padding: .5rem .8rem; border-radius: .6rem; opacity: 0; transition: opacity .25s; }}
+    .toast.show{{ opacity: .9; }}
+  </style>
+</head>
+<body>
+  <header>
+    <strong>AR 미리보기 · 송편을 든 토끼</strong>
+    <div class="spacer"></div>
+    <button id="copyLinkBtn">링크 복사</button>
+    <a id="openARBtn" href="#" rel="ar">AR 열기</a>
+  </header>
+
+  <model-viewer id="mv"
+      src="./송편을 든 토끼_.glb"
+      alt="송편을 든 토끼 3D 모델"
+      ar ar-modes="webxr scene-viewer quick-look"
+      camera-controls
+      shadow-intensity="1"
+      environment-image="neutral"
+      tone-mapping="aces"
+      exposure="1.0">
+    <button slot="ar-button" style="position:absolute; left:50%; transform:translateX(-50%); bottom:16px; background:white; border:1px solid #ccc; border-radius:10px; padding:.6rem 1rem; font-size:1rem; box-shadow:0 4px 20px rgba(0,0,0,.15);">
+      AR로 보기
+    </button>
+  </model-viewer>
+
+  <div class="qr-panel">
+    <img id="qr" alt="QR for this page" />
+    <div>
+      <div><strong>이 페이지 QR</strong></div>
+      <small>호스팅 후 스캔하면 바로 열립니다.</small>
+      <div style="margin-top:.4rem; display:flex; gap:.5rem;">
+        <button id="downloadQRBtn">QR 저장</button>
+        <button id="shareBtn">공유</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">복사되었습니다</div>
+
+  <script>
+    // Allow overriding the model URL with ?src=...
+    const params = new URLSearchParams(location.search);
+    const src = params.get('src');
+    const mv = document.getElementById('mv');
+    if (src) mv.src = src;
+
+    // Dynamic QR: uses a public API to render a PNG for the current page URL
+    const updateQR = () => {{
+      const url = location.href;
+      const qr = document.getElementById('qr');
+      const api = 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=' + encodeURIComponent(url);
+      qr.src = api;
+      qr.dataset.download = api; // keep for download button
+    }};
+    updateQR();
+
+    // Copy link button
+    const toast = document.getElementById('toast');
+    const showToast = (msg) => {{ toast.textContent = msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1200); }};
+    document.getElementById('copyLinkBtn').onclick = async () => {{
+      try {{ await navigator.clipboard.writeText(location.href); showToast('링크를 클립보드에 복사했어요'); }}
+      catch (e) {{ showToast('복사 실패'); }}
+    }};
+
+    // Download QR PNG
+    document.getElementById('downloadQRBtn').onclick = () => {{
+      const a = document.createElement('a');
+      a.href = document.getElementById('qr').dataset.download;
+      a.download = 'rabbit_ar_qr.png';
+      document.body.appendChild(a); a.click(); a.remove();
+    }};
+
+    // Web Share (if available)
+    document.getElementById('shareBtn').onclick = async () => {{
+      if (navigator.share) {{
+        try {{ await navigator.share({{ title: document.title, url: location.href }}); }} catch(_ ){{}}
+      }} else {{ showToast('이 브라우저는 Web Share를 지원하지 않아요'); }}
+    }};
+
+    // AR link button mirrors model-viewer AR button (some Android browsers prefer anchor with rel=ar)
+    const openARBtn = document.getElementById('openARBtn');
+    const refreshArHref = () => {{ openARBtn.href = mv.src; }};
+    mv.addEventListener('load', refreshArHref);
+    refreshArHref();
+  </script>
+</body>
+</html>
